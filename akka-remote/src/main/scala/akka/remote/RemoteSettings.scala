@@ -57,21 +57,9 @@ final class RemoteSettings(val config: Config) {
 
   val RetryGateClosedFor: FiniteDuration = {
     Duration(getMilliseconds("akka.remote.retry-gate-closed-for"), MILLISECONDS)
-  } requiring (_ >= Duration.Zero, "retry-gate-closed-for must be >= 0")
-
-  val UnknownAddressGateClosedFor: FiniteDuration = {
-    Duration(getMilliseconds("akka.remote.gate-invalid-addresses-for"), MILLISECONDS)
-  } requiring (_ > Duration.Zero, "gate-invalid-addresses-for must be > 0")
+  } requiring (_ > Duration.Zero, "retry-gate-closed-for must be > 0")
 
   val UsePassiveConnections: Boolean = getBoolean("akka.remote.use-passive-connections")
-
-  val MaximumRetriesInWindow: Int = {
-    getInt("akka.remote.maximum-retries-in-window")
-  } requiring (_ > 0, "maximum-retries-in-window must be > 0")
-
-  val RetryWindow: FiniteDuration = {
-    Duration(getMilliseconds("akka.remote.retry-window"), MILLISECONDS)
-  } requiring (_ > Duration.Zero, "retry-window must be > 0")
 
   val BackoffPeriod: FiniteDuration = {
     Duration(getMilliseconds("akka.remote.backoff-interval"), MILLISECONDS)
@@ -89,10 +77,9 @@ final class RemoteSettings(val config: Config) {
     getInt("akka.remote.system-message-buffer-size")
   } requiring (_ > 0, "system-message-buffer-size must be > 0")
 
-  val QuarantineDuration: Duration = {
-    if (getString("akka.remote.quarantine-systems-for") == "off") Duration.Undefined
-    else Duration(getMilliseconds("akka.remote.quarantine-systems-for"), MILLISECONDS).requiring(_ > Duration.Zero,
-      "quarantine-systems-for must be > 0 or off")
+  val QuarantineDuration: FiniteDuration = {
+    Duration(getMilliseconds("akka.remote.prune-quarantine-marker-after"), MILLISECONDS).requiring(_ > Duration.Zero,
+      "prune-quarantine-marker-after must be > 0")
   }
 
   val CommandAckTimeout: Timeout = {

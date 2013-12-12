@@ -357,7 +357,10 @@ private[transport] class ThrottledAssociation(
   var throttledMessages = Queue.empty[ByteString]
   var upstreamListener: HandleEventListener = _
 
-  override def postStop(): Unit = originalHandle.disassociate()
+  override def postStop(): Unit = {
+    originalHandle.disassociate()
+    if (upstreamListener ne null) upstreamListener notify Disassociated(AssociationHandle.Unknown)
+  }
 
   if (inbound) startWith(WaitExposedHandle, Uninitialized) else {
     originalHandle.readHandlerPromise.success(ActorHandleEventListener(self))
@@ -453,8 +456,6 @@ private[transport] class ThrottledAssociation(
       sender ! SetThrottleAck
       stay()
     case Event(Disassociated(info), _) ⇒
-      if (upstreamListener ne null) upstreamListener notify Disassociated(info)
-      originalHandle.disassociate()
       stop()
   }
 
