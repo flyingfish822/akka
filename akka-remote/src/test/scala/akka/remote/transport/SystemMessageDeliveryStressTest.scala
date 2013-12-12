@@ -36,6 +36,7 @@ object SystemMessageDeliveryStressTest {
     akka {
       #loglevel = DEBUG
       actor.provider = "akka.remote.RemoteActorRefProvider"
+      actor.serialize-messages = off
 
       remote.log-remote-lifecycle-events = on
 
@@ -45,8 +46,8 @@ object SystemMessageDeliveryStressTest {
         min-std-deviation = 1 ms
         acceptable-heartbeat-pause = 0.01 s
       }
-      remote.retry-window = 1 s
-      remote.maximum-retries-in-window = 2
+      ## Keep this setting tight, otherwise the test takes a long time or times out
+      remote.resend-interval = 1 s
       remote.use-passive-connections = on
 
       remote.netty.tcp {
@@ -142,12 +143,9 @@ abstract class SystemMessageDeliveryStressTest(msg: String, cfg: String)
 
 }
 
-class SystemMessageDeliveryDefault extends SystemMessageDeliveryStressTest("retry gate off, passive connections on", "")
-class SystemMessageDeliveryRetryGate extends SystemMessageDeliveryStressTest("retry gate on, passive connections on",
+class SystemMessageDeliveryRetryGate extends SystemMessageDeliveryStressTest("passive connections on",
   "akka.remote.retry-gate-closed-for = 0.5 s")
-class SystemMessageDeliveryNoPassive extends SystemMessageDeliveryStressTest("retry gate off, passive connections off",
-  "akka.remote.use-passive-connections = off")
-class SystemMessageDeliveryNoPassiveRetryGate extends SystemMessageDeliveryStressTest("retry gate on, passive connections off",
+class SystemMessageDeliveryNoPassiveRetryGate extends SystemMessageDeliveryStressTest("passive connections off",
   """
     akka.remote.use-passive-connections = off
     akka.remote.retry-gate-closed-for = 0.5 s
