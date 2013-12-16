@@ -67,6 +67,7 @@ object AkkaProtocolStressTest {
           if (seq > limit * 0.5) {
             controller ! ((maxSeq, losses))
             context.system.scheduler.schedule(1.second, 1.second, self, ResendFinal)
+            context.become(done)
           }
         } else {
           controller ! s"Received out of order message. Previous: ${maxSeq} Received: ${seq}"

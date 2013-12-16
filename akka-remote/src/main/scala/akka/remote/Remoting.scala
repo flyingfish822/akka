@@ -420,7 +420,7 @@ private[remote] class EndpointManager(conf: Config, log: LoggingAdapter) extends
 
       case HopelessAssociation(localAddress, remoteAddress, None, _) ⇒
         log.warning("Association to [{}] with unknown UID is irrecoverably failed. " +
-          "Address is cannot be quarantined without knowing the UID, gating instead for {} ms.",
+          "Address cannot be quarantined without knowing the UID, gating instead for {} ms.",
           remoteAddress, settings.RetryGateClosedFor.toMillis)
         endpoints.markAsFailed(sender, Deadline.now + settings.RetryGateClosedFor)
         context.system.eventStream.publish(AddressTerminated(remoteAddress))

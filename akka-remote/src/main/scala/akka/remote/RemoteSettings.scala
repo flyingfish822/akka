@@ -45,41 +45,41 @@ final class RemoteSettings(val config: Config) {
 
   val ShutdownTimeout: Timeout = {
     Timeout(Duration(getMilliseconds("akka.remote.shutdown-timeout"), MILLISECONDS))
-  } requiring (_.duration > Duration.Zero, "shutdown-timeout must be > 0")
+  } requiring (_.duration > Duration.Zero, "shutdown-timeout must be > 0 ms")
 
   val FlushWait: FiniteDuration = {
     Duration(getMilliseconds("akka.remote.flush-wait-on-shutdown"), MILLISECONDS)
-  } requiring (_ > Duration.Zero, "flush-wait-on-shutdown must be > 0")
+  } requiring (_ > Duration.Zero, "flush-wait-on-shutdown must be > 0 ms")
 
   val StartupTimeout: Timeout = {
     Timeout(Duration(getMilliseconds("akka.remote.startup-timeout"), MILLISECONDS))
-  } requiring (_.duration > Duration.Zero, "startup-timeout must be > 0")
+  } requiring (_.duration > Duration.Zero, "startup-timeout must be > 0 ms")
 
   val RetryGateClosedFor: FiniteDuration = {
     Duration(getMilliseconds("akka.remote.retry-gate-closed-for"), MILLISECONDS)
-  } requiring (_ > Duration.Zero, "retry-gate-closed-for must be > 0")
+  } requiring (_ > Duration.Zero, "retry-gate-closed-for must be > 0 ms")
 
   val UsePassiveConnections: Boolean = getBoolean("akka.remote.use-passive-connections")
 
   val BackoffPeriod: FiniteDuration = {
     Duration(getMilliseconds("akka.remote.backoff-interval"), MILLISECONDS)
-  } requiring (_ > Duration.Zero, "backoff-interval must be > 0")
+  } requiring (_ > Duration.Zero, "backoff-interval must be > 0 ms")
 
   val SysMsgAckTimeout: FiniteDuration = {
     Duration(getMilliseconds("akka.remote.system-message-ack-piggyback-timeout"), MILLISECONDS)
-  } requiring (_ > Duration.Zero, "system-message-ack-piggyback-timeout must be > 0")
+  } requiring (_ > Duration.Zero, "system-message-ack-piggyback-timeout must be > 0 ms")
 
   val SysResendTimeout: FiniteDuration = {
     Duration(getMilliseconds("akka.remote.resend-interval"), MILLISECONDS)
-  } requiring (_ > Duration.Zero, "resend-interval must be > 0")
+  } requiring (_ > Duration.Zero, "resend-interval must be > 0 ms")
 
   val SysMsgBufferSize: Int = {
     getInt("akka.remote.system-message-buffer-size")
-  } requiring (_ > 0, "system-message-buffer-size must be > 0")
+  } requiring (_ > 0, "system-message-buffer-size must be > 0 ms")
 
   val QuarantineDuration: FiniteDuration = {
     Duration(getMilliseconds("akka.remote.prune-quarantine-marker-after"), MILLISECONDS).requiring(_ > Duration.Zero,
-      "prune-quarantine-marker-after must be > 0")
+      "prune-quarantine-marker-after must be > 0 ms")
   }
 
   val CommandAckTimeout: Timeout = {
