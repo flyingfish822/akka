@@ -29,6 +29,7 @@ import com.typesafe.config.Config
 import akka.event.LoggingAdapter
 import java.util.concurrent.ThreadFactory
 import scala.util.control.NonFatal
+import scala.annotation.varargs
 
 /**
  * Cluster Extension Id and factory for creating Cluster extension.
@@ -207,15 +208,20 @@ class Cluster(val system: ExtendedActorSystem) extends Extension {
   def isTerminated: Boolean = _isTerminated.get
 
   /**
-   * Subscribe to cluster domain events.
-   * The `to` Class can be [[akka.cluster.ClusterEvent.ClusterDomainEvent]]
-   * or subclass.
+   * Current snapshot state of the cluster.
+   */
+  def state: CurrentClusterState = readView.state
+
+  /**
+   * Subscribe to one or more cluster domain events.
+   * The `to` classes can be [[akka.cluster.ClusterEvent.ClusterDomainEvent]]
+   * or subclasses.
    *
    * A snapshot of [[akka.cluster.ClusterEvent.CurrentClusterState]]
    * will be sent to the subscriber as the first event.
    */
-  def subscribe(subscriber: ActorRef, to: Class[_]): Unit =
-    clusterCore ! InternalClusterAction.Subscribe(subscriber, to)
+  @varargs def subscribe(subscriber: ActorRef, to: Class[_]*): Unit =
+    clusterCore ! InternalClusterAction.Subscribe(subscriber, to.toSet)
 
   /**
    * Unsubscribe to all cluster domain events.
@@ -237,13 +243,15 @@ class Cluster(val system: ExtendedActorSystem) extends Extension {
    * If you want this to happen periodically you need to schedule a call to
    * this method yourself.
    */
+  @deprecated("Use sendCurrentClusterState instead of publishCurrentClusterState", "2.3")
   def publishCurrentClusterState(): Unit =
     clusterCore ! InternalClusterAction.PublishCurrentClusterState(None)
 
   /**
    * Publish current (full) state of the cluster to the specified
    * receiver. If you want this to happen periodically you need to schedule
-   * a call to this method yourself.
+   * a call to this method yourself. Note that you can also retrieve the current
+   * state with [[#state]].
    */
   def sendCurrentClusterState(receiver: ActorRef): Unit =
     clusterCore ! InternalClusterAction.PublishCurrentClusterState(Some(receiver))

@@ -329,9 +329,9 @@ private[cluster] final class ClusterDomainEventPublisher extends Actor with Acto
     }
   }
 
-  def subscribe(subscriber: ActorRef, to: Class[_]): Unit = {
+  def subscribe(subscriber: ActorRef, to: Set[Class[_]]): Unit = {
     publishCurrentClusterState(Some(subscriber))
-    eventStream.subscribe(subscriber, to)
+    to foreach { eventStream.subscribe(subscriber, _) }
   }
 
   def unsubscribe(subscriber: ActorRef, to: Option[Class[_]]): Unit = to match {

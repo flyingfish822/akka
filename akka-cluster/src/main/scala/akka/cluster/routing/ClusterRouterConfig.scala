@@ -373,10 +373,9 @@ private[akka] trait ClusterRouterActor { this: RouterActor ⇒
   def cluster: Cluster = Cluster(context.system)
 
   // re-subscribe when restart
-  override def preStart(): Unit = {
-    cluster.subscribe(self, classOf[MemberEvent])
-    cluster.subscribe(self, classOf[ReachabilityEvent])
-  }
+  override def preStart(): Unit =
+    cluster.subscribe(self, classOf[MemberEvent], classOf[ReachabilityEvent])
+
   override def postStop(): Unit = cluster.unsubscribe(self)
 
   var nodes: immutable.SortedSet[Address] = {
