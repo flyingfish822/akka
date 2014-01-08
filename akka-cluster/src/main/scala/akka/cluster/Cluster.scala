@@ -179,13 +179,7 @@ class Cluster(val system: ExtendedActorSystem) extends Extension {
     }
   }
 
-  @volatile
-  private var readViewStarted = false
-  private[cluster] lazy val readView: ClusterReadView = {
-    val readView = new ClusterReadView(this)
-    readViewStarted = true
-    readView
-  }
+  private[cluster] val readView: ClusterReadView = new ClusterReadView(this)
 
   system.registerOnTermination(shutdown())
 
@@ -358,7 +352,7 @@ class Cluster(val system: ExtendedActorSystem) extends Extension {
       logInfo("Shutting down...")
 
       system.stop(clusterDaemons)
-      if (readViewStarted) readView.close()
+      readView.close()
 
       closeScheduler()
 
