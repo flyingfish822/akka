@@ -302,19 +302,19 @@ private[cluster] final class ClusterDomainEventPublisher extends Actor with Acto
   }
 
   def receive = {
-    case PublishChanges(newGossip)            ⇒ publishChanges(newGossip)
-    case currentStats: CurrentInternalStats   ⇒ publishInternalStats(currentStats)
-    case PublishCurrentClusterState(receiver) ⇒ publishCurrentClusterState(receiver)
-    case Subscribe(subscriber, to)            ⇒ subscribe(subscriber, to)
-    case Unsubscribe(subscriber, to)          ⇒ unsubscribe(subscriber, to)
-    case PublishEvent(event)                  ⇒ publish(event)
+    case PublishChanges(newGossip)              ⇒ publishChanges(newGossip)
+    case currentStats: CurrentInternalStats     ⇒ publishInternalStats(currentStats)
+    case PublishCurrentClusterState(receiver)   ⇒ publishCurrentClusterState(receiver)
+    case Subscribe(subscriber, materialize, to) ⇒ subscribe(subscriber, materialize, to)
+    case Unsubscribe(subscriber, to)            ⇒ unsubscribe(subscriber, to)
+    case PublishEvent(event)                    ⇒ publish(event)
   }
 
   def eventStream: EventStream = context.system.eventStream
 
   /**
    * The current snapshot state corresponding to latest gossip
-   * to mimic what you would have seen if you where listening to the events.
+   * to mimic what you would have seen if you were listening to the events.
    */
   def publishCurrentClusterState(receiver: Option[ActorRef]): Unit = {
     val state = CurrentClusterState(
@@ -329,8 +329,25 @@ private[cluster] final class ClusterDomainEventPublisher extends Actor with Acto
     }
   }
 
-  def subscribe(subscriber: ActorRef, to: Set[Class[_]]): Unit = {
-    publishCurrentClusterState(Some(subscriber))
+  /**
+   * Send the events corresponding to the latest gossip to mimic what you would
+   * have seen if you were listening to the events.
+   */
+  def sendMaterializedState(receiver: ActorRef, subscriptionFilter: Set[Class[_]]): Unit = {
+
+  }
+
+  def subscribe(subscriber: ActorRef, materialize: Boolean, to: Set[Class[_]]): Unit = {
+    if (materialize) {
+      def pub(event: AnyRef): Unit = {
+        if (to.exists(_.isAssignableFrom(event.getClass)))
+          subscriber ! event
+      }
+      publishDiff(Gossip.empty, latestGossip, pub)
+    } else {
+      publishCurrentClusterState(Some(subscriber))
+    }
+
     to foreach { eventStream.subscribe(subscriber, _) }
   }
 
@@ -343,14 +360,18 @@ private[cluster] final class ClusterDomainEventPublisher extends Actor with Acto
     val oldGossip = latestGossip
     // keep the latestGossip to be sent to new subscribers
     latestGossip = newGossip
-    diffUnreachable(oldGossip, newGossip) foreach publish
-    diffReachable(oldGossip, newGossip) foreach publish
-    diffMemberEvents(oldGossip, newGossip) foreach publish
-    diffLeader(oldGossip, newGossip) foreach publish
-    diffRolesLeader(oldGossip, newGossip) foreach publish
+    publishDiff(oldGossip, newGossip, publish)
+  }
+
+  def publishDiff(oldGossip: Gossip, newGossip: Gossip, pub: AnyRef ⇒ Unit): Unit = {
+    diffMemberEvents(oldGossip, newGossip) foreach pub
+    diffUnreachable(oldGossip, newGossip) foreach pub
+    diffReachable(oldGossip, newGossip) foreach pub
+    diffLeader(oldGossip, newGossip) foreach pub
+    diffRolesLeader(oldGossip, newGossip) foreach pub
     // publish internal SeenState for testing purposes
-    diffSeen(oldGossip, newGossip) foreach publish
-    diffReachability(oldGossip, newGossip) foreach publish
+    diffSeen(oldGossip, newGossip) foreach pub
+    diffReachability(oldGossip, newGossip) foreach pub
   }
 
   def publishInternalStats(currentStats: CurrentInternalStats): Unit = publish(currentStats)

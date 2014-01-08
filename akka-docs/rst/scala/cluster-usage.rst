@@ -169,6 +169,13 @@ if you start the subscription before the initial join procedure has completed.
 This is expected behavior. When the node has been accepted in the cluster you will 
 receive ``MemberUp`` for that node, and other nodes.
 
+If you find it inconvenient to handle the ``CurrentClusterState`` you can use
+``Cluster(system).subscribe(subscriber, materializeCurrentState, to)`` with
+``materializeCurrentState = true``. That means that instead of receiving
+``CurrentClusterState`` as the first event you will receive the events corresponding
+to the current state to mimic what you would have seen if you were listening to the
+events when they occurred in the past.
+
 The events to track the life-cycle of members are:
 
 * ``ClusterEvent.MemberUp`` - A new member has joined the cluster and its status has been changed to ``Up``.
@@ -183,6 +190,10 @@ The events to track the life-cycle of members are:
 There are more types of change events, consult the API documentation
 of classes that extends ``akka.cluster.ClusterEvent.ClusterDomainEvent``
 for details about the events.
+
+Instead of subscribing to cluster events it can sometimes be convenient to only get the full membership state with
+``Cluster(system).state``. Note that this state is not necessarily in sync with the events published to a
+cluster subscription. 
 
 Worker Dial-in Example
 ----------------------

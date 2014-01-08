@@ -221,7 +221,24 @@ class Cluster(val system: ExtendedActorSystem) extends Extension {
    * will be sent to the subscriber as the first event.
    */
   @varargs def subscribe(subscriber: ActorRef, to: Class[_]*): Unit =
-    clusterCore ! InternalClusterAction.Subscribe(subscriber, to.toSet)
+    clusterCore ! InternalClusterAction.Subscribe(subscriber, materializeCurrentState = false, to.toSet)
+
+  /**
+   * Subscribe to one or more cluster domain events.
+   * The `to` classes can be [[akka.cluster.ClusterEvent.ClusterDomainEvent]]
+   * or subclasses.
+   *
+   * If `materializeCurrentState` is `true` the events corresponding
+   * to the current state will be sent to the subscriber to mimic what you would
+   * have seen if you were listening to the events when they occurred in the past.
+   *
+   * If `materializeCurrentState` is `false` a snapshot of [[akka.cluster.ClusterEvent.CurrentClusterState]]
+   * will be sent to the subscriber as the first event.
+   *
+   * Note that for large clusters it is more efficient to not `materializeCurrentState`.
+   */
+  @varargs def subscribe(subscriber: ActorRef, materializeCurrentState: Boolean, to: Class[_]*): Unit =
+    clusterCore ! InternalClusterAction.Subscribe(subscriber, materializeCurrentState, to.toSet)
 
   /**
    * Unsubscribe to all cluster domain events.
