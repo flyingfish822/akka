@@ -47,7 +47,7 @@ object SystemMessageDeliveryStressTest {
         acceptable-heartbeat-pause = 0.01 s
       }
       ## Keep this setting tight, otherwise the test takes a long time or times out
-      remote.resend-interval = 1 s
+      remote.resend-interval = 0.5 s
       remote.use-passive-connections = on
 
       remote.netty.tcp {
