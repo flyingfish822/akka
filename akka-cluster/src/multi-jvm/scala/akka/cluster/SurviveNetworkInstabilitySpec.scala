@@ -32,7 +32,13 @@ object SurviveNetworkInstabilityMultiJvmSpec extends MultiNodeConfig {
   val eighth = role("eighth")
 
   commonConfig(debugConfig(on = false).withFallback(
-    ConfigFactory.parseString("akka.remote.system-message-buffer-size=20")).
+    ConfigFactory.parseString("""
+        akka.remote.transport-failure-detector.heartbeat-interval=1s
+        akka.remote.transport-failure-detector.acceptable-heartbeat-pause=3s
+        #akka.remote.use-dispatcher = akka.actor.default-dispatcher
+        akka.remote.retry-gate-closed-for=5s
+        #akka.remote.use-passive-connections = off
+        akka.remote.system-message-buffer-size=20""")).
     withFallback(MultiNodeClusterSpec.clusterConfig))
 
   testTransport(on = true)
@@ -49,10 +55,18 @@ object SurviveNetworkInstabilityMultiJvmSpec extends MultiNodeConfig {
 
   class RemoteChild extends Actor {
     import context.dispatcher
-    context.system.scheduler.scheduleOnce(500.millis, self, "boom")
+
     def receive = {
+      case "hello" ⇒
+        context.system.scheduler.scheduleOnce(2.seconds, self, "boom")
+        sender ! "hello"
       case "boom" ⇒ throw new SimulatedException
-      case x      ⇒ sender ! x
+    }
+  }
+
+  class Echo extends Actor {
+    def receive = {
+      case m ⇒ sender ! m
     }
   }
 
@@ -85,12 +99,30 @@ abstract class SurviveNetworkInstabilitySpec
     awaitAssert(clusterView.unreachableMembers.map(_.address) should be(expected))
   }
 
+  system.actorOf(Props[Echo], "echo")
+
+  def assertCanTalk(alive: RoleName*): Unit = {
+    val t = System.currentTimeMillis()
+    runOn(alive: _*) {
+      for (to ← alive) {
+        val sel = system.actorSelection(node(to) / "user" / "echo")
+        awaitAssert {
+          sel ! "ping"
+          expectMsg(1.second, "ping")
+        }
+      }
+    }
+    println(s"# talk check took: ${(System.currentTimeMillis() - t)} ms on ${myself.name}")
+    enterBarrier("ping-ok")
+  }
+
   "A network partition tolerant cluster" must {
 
     "reach initial convergence" taggedAs LongRunningTest in {
       awaitClusterUp(first, second, third, fourth, fifth)
 
       enterBarrier("after-1")
+      assertCanTalk(first, second, third, fourth, fifth)
     }
 
     "heal after a broken pair" taggedAs LongRunningTest in within(30.seconds) {
@@ -119,6 +151,7 @@ abstract class SurviveNetworkInstabilitySpec
 
       awaitAllReachable()
       enterBarrier("after-2")
+      assertCanTalk(first, second, third, fourth, fifth)
     }
 
     "heal after one isolated node" taggedAs LongRunningTest in within(30.seconds) {
@@ -145,6 +178,7 @@ abstract class SurviveNetworkInstabilitySpec
       enterBarrier("repair-3")
       awaitAllReachable()
       enterBarrier("after-3")
+      assertCanTalk((others :+ first): _*)
     }
 
     "heal two isolated islands" taggedAs LongRunningTest in within(30.seconds) {
@@ -175,6 +209,7 @@ abstract class SurviveNetworkInstabilitySpec
       enterBarrier("repair-4")
       awaitAllReachable()
       enterBarrier("after-4")
+      assertCanTalk((island1 ++ island2): _*)
     }
 
     "heal after unreachable when ring is changed" taggedAs LongRunningTest in within(45.seconds) {
@@ -220,6 +255,7 @@ abstract class SurviveNetworkInstabilitySpec
         awaitMembersUp(roles.size - 1)
       }
       enterBarrier("after-5")
+      assertCanTalk((joining ++ others): _*)
     }
 
     "down and remove quarantined node" taggedAs LongRunningTest in within(45.seconds) {
@@ -269,14 +305,17 @@ abstract class SurviveNetworkInstabilitySpec
       }
 
       enterBarrier("after-6")
+      assertCanTalk(others: _*)
     }
 
-    "continue and move Joining to Up after downing of one half" taggedAs LongRunningTest in within(45.seconds) {
+    "continue and move Joining to Up after downing of one half" taggedAs LongRunningTest in within(60.seconds) {
+      log.info("# Starting last step")
       // note that second is already removed in previous step
       val side1 = Vector(first, third, fourth)
       val side1AfterJoin = side1 :+ eighth
       val side2 = Vector(fifth, sixth, seventh)
       runOn(first) {
+        log.info("# Starting blackhole")
         for (role1 ← side1AfterJoin; role2 ← side2) {
           testConductor.blackhole(role1, role2, Direction.Both).await
         }
@@ -331,6 +370,7 @@ abstract class SurviveNetworkInstabilitySpec
       }
 
       enterBarrier("after-7")
+      assertCanTalk((side1AfterJoin ++ side2): _*)
     }
 
   }

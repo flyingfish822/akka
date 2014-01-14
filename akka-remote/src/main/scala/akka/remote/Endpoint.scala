@@ -546,6 +546,7 @@ private[remote] class EndpointWriter(
     case Event(Status.Failure(e: InvalidAssociationException), _) ⇒
       publishAndThrow(new InvalidAssociation(localAddress, remoteAddress, e), Logging.WarningLevel)
     case Event(Status.Failure(e), _) ⇒
+      e.printStackTrace()
       publishAndThrow(new EndpointAssociationException(s"Association failed with [$remoteAddress]", e), Logging.DebugLevel)
     case Event(Handle(inboundHandle), _) ⇒
       // Assert handle == None?
