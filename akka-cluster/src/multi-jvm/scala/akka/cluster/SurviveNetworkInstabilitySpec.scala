@@ -32,7 +32,12 @@ object SurviveNetworkInstabilityMultiJvmSpec extends MultiNodeConfig {
   val eighth = role("eighth")
 
   commonConfig(debugConfig(on = false).withFallback(
-    ConfigFactory.parseString("akka.remote.system-message-buffer-size=20")).
+    ConfigFactory.parseString("""
+        #akka.remote.transport-failure-detector.heartbeat-interval=1s
+        #akka.remote.transport-failure-detector.acceptable-heartbeat-pause=4s
+        #akka.remote.use-dispatcher = akka.actor.default-dispatcher
+        #akka.remote.retry-gate-closed-for=1s
+        akka.remote.system-message-buffer-size=20""")).
     withFallback(MultiNodeClusterSpec.clusterConfig))
 
   testTransport(on = true)
@@ -49,10 +54,12 @@ object SurviveNetworkInstabilityMultiJvmSpec extends MultiNodeConfig {
 
   class RemoteChild extends Actor {
     import context.dispatcher
-    context.system.scheduler.scheduleOnce(500.millis, self, "boom")
+
     def receive = {
+      case "hello" ⇒
+        context.system.scheduler.scheduleOnce(2.seconds, self, "boom")
+        sender ! "hello"
       case "boom" ⇒ throw new SimulatedException
-      case x      ⇒ sender ! x
     }
   }
 
@@ -222,6 +229,7 @@ abstract class SurviveNetworkInstabilitySpec
       enterBarrier("after-5")
     }
 
+    /*
     "down and remove quarantined node" taggedAs LongRunningTest in within(45.seconds) {
       val others = Vector(first, third, fourth, fifth, sixth, seventh)
 
@@ -270,10 +278,11 @@ abstract class SurviveNetworkInstabilitySpec
 
       enterBarrier("after-6")
     }
+    */
 
     "continue and move Joining to Up after downing of one half" taggedAs LongRunningTest in within(45.seconds) {
       // note that second is already removed in previous step
-      val side1 = Vector(first, third, fourth)
+      val side1 = Vector(first, second, third, fourth)
       val side1AfterJoin = side1 :+ eighth
       val side2 = Vector(fifth, sixth, seventh)
       runOn(first) {
