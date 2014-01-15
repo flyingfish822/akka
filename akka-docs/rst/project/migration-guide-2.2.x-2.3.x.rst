@@ -140,3 +140,14 @@ Use ``sendCurrentClusterState`` instead. Note that you can also retrieve the cur
 with the new ``Cluster(system).state``.
 
 
+CurrentClusterState is not a ClusterDomainEvent
+===============================================
+
+``CurrentClusterState`` does not implement the ``ClusterDomainEvent`` marker interface any more.
+
+Note the new ``initialStateMode`` parameter of ``Cluster.subscribe``, which makes it possible
+to handle the initial state as events instead of ``CurrentClusterState``. See 
+:ref:`documentation for Scala <cluster_subscriber_scala>` and 
+:ref:`documentation for Java <cluster_subscriber_java>`.
+
+

@@ -239,7 +239,7 @@ private[akka] trait ClusterRouterConfigBase extends RouterConfig {
 
   // Intercept ClusterDomainEvent and route them to the ClusterRouterActor
   override def isManagementMessage(msg: Any): Boolean =
-    (msg.isInstanceOf[ClusterDomainEvent]) || super.isManagementMessage(msg)
+    (msg.isInstanceOf[ClusterDomainEvent]) || msg.isInstanceOf[CurrentClusterState] || super.isManagementMessage(msg)
 }
 
 /**

@@ -20,6 +20,31 @@ import akka.dispatch.{ UnboundedMessageQueueSemantics, RequiresMessageQueue }
  * }}}
  */
 object ClusterEvent {
+
+  sealed abstract class SubscriptionInitialStateMode
+  /**
+   * When using this subscription mode a snapshot of
+   * [[akka.cluster.ClusterEvent.CurrentClusterState]] will be sent to the
+   * subscriber as the first message.
+   */
+  case object InitialStateAsSnapshot extends SubscriptionInitialStateMode
+  /**
+   * When using this subscription mode the events corresponding
+   * to the current state will be sent to the subscriber to mimic what you would
+   * have seen if you were listening to the events when they occurred in the past.
+   */
+  case object InitialStateAsEvents extends SubscriptionInitialStateMode
+
+  /**
+   * Java API
+   */
+  def initialStateAsSnapshot = InitialStateAsSnapshot
+
+  /**
+   * Java API
+   */
+  def initialStateAsEvents = InitialStateAsEvents
+
   /**
    * Marker interface for cluster domain events.
    */
@@ -33,7 +58,7 @@ object ClusterEvent {
     unreachable: Set[Member] = Set.empty,
     seenBy: Set[Address] = Set.empty,
     leader: Option[Address] = None,
-    roleLeaderMap: Map[String, Option[Address]] = Map.empty) extends ClusterDomainEvent {
+    roleLeaderMap: Map[String, Option[Address]] = Map.empty) {
 
     /**
      * Java API: get current member list.
@@ -102,7 +127,8 @@ object ClusterEvent {
   }
 
   /**
-   * Member status changed to Exiting.
+   * Member status changed to [[MemberStatus.Exiting]] and will be removed
+   * when all members have seen the `Exiting` status.
    */
   case class MemberExited(member: Member) extends MemberEvent {
     if (member.status != Exiting) throw new IllegalArgumentException("Expected Exiting status, got: " + member)
@@ -302,12 +328,12 @@ private[cluster] final class ClusterDomainEventPublisher extends Actor with Acto
   }
 
   def receive = {
-    case PublishChanges(newGossip)              ⇒ publishChanges(newGossip)
-    case currentStats: CurrentInternalStats     ⇒ publishInternalStats(currentStats)
-    case PublishCurrentClusterState(receiver)   ⇒ publishCurrentClusterState(receiver)
-    case Subscribe(subscriber, materialize, to) ⇒ subscribe(subscriber, materialize, to)
-    case Unsubscribe(subscriber, to)            ⇒ unsubscribe(subscriber, to)
-    case PublishEvent(event)                    ⇒ publish(event)
+    case PublishChanges(newGossip)            ⇒ publishChanges(newGossip)
+    case currentStats: CurrentInternalStats   ⇒ publishInternalStats(currentStats)
+    case PublishCurrentClusterState(receiver) ⇒ publishCurrentClusterState(receiver)
+    case Subscribe(subscriber, initMode, to)  ⇒ subscribe(subscriber, initMode, to)
+    case Unsubscribe(subscriber, to)          ⇒ unsubscribe(subscriber, to)
+    case PublishEvent(event)                  ⇒ publish(event)
   }
 
   def eventStream: EventStream = context.system.eventStream
@@ -329,23 +355,16 @@ private[cluster] final class ClusterDomainEventPublisher extends Actor with Acto
     }
   }
 
-  /**
-   * Send the events corresponding to the latest gossip to mimic what you would
-   * have seen if you were listening to the events.
-   */
-  def sendMaterializedState(receiver: ActorRef, subscriptionFilter: Set[Class[_]]): Unit = {
-
-  }
-
-  def subscribe(subscriber: ActorRef, materialize: Boolean, to: Set[Class[_]]): Unit = {
-    if (materialize) {
-      def pub(event: AnyRef): Unit = {
-        if (to.exists(_.isAssignableFrom(event.getClass)))
-          subscriber ! event
-      }
-      publishDiff(Gossip.empty, latestGossip, pub)
-    } else {
-      publishCurrentClusterState(Some(subscriber))
+  def subscribe(subscriber: ActorRef, initMode: SubscriptionInitialStateMode, to: Set[Class[_]]): Unit = {
+    initMode match {
+      case InitialStateAsEvents ⇒
+        def pub(event: AnyRef): Unit = {
+          if (to.exists(_.isAssignableFrom(event.getClass)))
+            subscriber ! event
+        }
+        publishDiff(Gossip.empty, latestGossip, pub)
+      case InitialStateAsSnapshot ⇒
+        publishCurrentClusterState(Some(subscriber))
     }
 
     to foreach { eventStream.subscribe(subscriber, _) }
