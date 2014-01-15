@@ -88,7 +88,7 @@ class ClusterSpec extends AkkaSpec(ClusterSpec.config) with ImplicitSender {
 
     "publish CurrentClusterState to subscribers when requested" in {
       try {
-        cluster.subscribe(testActor, classOf[ClusterEvent.ClusterDomainEvent])
+        cluster.subscribe(testActor, classOf[ClusterEvent.ClusterDomainEvent], classOf[ClusterEvent.CurrentClusterState])
         // first, is in response to the subscription
         expectMsgClass(classOf[ClusterEvent.CurrentClusterState])
 
