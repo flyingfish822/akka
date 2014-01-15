@@ -33,10 +33,10 @@ object SurviveNetworkInstabilityMultiJvmSpec extends MultiNodeConfig {
 
   commonConfig(debugConfig(on = false).withFallback(
     ConfigFactory.parseString("""
-        akka.remote.transport-failure-detector.heartbeat-interval=1s
-        akka.remote.transport-failure-detector.acceptable-heartbeat-pause=3s
+        #akka.remote.transport-failure-detector.heartbeat-interval=1s
+        #akka.remote.transport-failure-detector.acceptable-heartbeat-pause=10s
         #akka.remote.use-dispatcher = akka.actor.default-dispatcher
-        akka.remote.retry-gate-closed-for=5s
+        #akka.remote.retry-gate-closed-for=5s
         #akka.remote.use-passive-connections = off
         akka.remote.system-message-buffer-size=20""")).
     withFallback(MultiNodeClusterSpec.clusterConfig))
@@ -125,7 +125,7 @@ abstract class SurviveNetworkInstabilitySpec
       assertCanTalk(first, second, third, fourth, fifth)
     }
 
-    "heal after a broken pair" taggedAs LongRunningTest in within(30.seconds) {
+    "heal after a broken pair" taggedAs LongRunningTest in within(45.seconds) {
       runOn(first) {
         testConductor.blackhole(first, second, Direction.Both).await
       }
@@ -154,7 +154,7 @@ abstract class SurviveNetworkInstabilitySpec
       assertCanTalk(first, second, third, fourth, fifth)
     }
 
-    "heal after one isolated node" taggedAs LongRunningTest in within(30.seconds) {
+    "heal after one isolated node" taggedAs LongRunningTest in within(45.seconds) {
       val others = Vector(second, third, fourth, fifth)
       runOn(first) {
         for (other ← others) {
@@ -181,7 +181,7 @@ abstract class SurviveNetworkInstabilitySpec
       assertCanTalk((others :+ first): _*)
     }
 
-    "heal two isolated islands" taggedAs LongRunningTest in within(30.seconds) {
+    "heal two isolated islands" taggedAs LongRunningTest in within(45.seconds) {
       val island1 = Vector(first, second)
       val island2 = Vector(third, fourth, fifth)
       runOn(first) {
@@ -212,7 +212,7 @@ abstract class SurviveNetworkInstabilitySpec
       assertCanTalk((island1 ++ island2): _*)
     }
 
-    "heal after unreachable when ring is changed" taggedAs LongRunningTest in within(45.seconds) {
+    "heal after unreachable when ring is changed" taggedAs LongRunningTest in within(60.seconds) {
       val joining = Vector(sixth, seventh)
       val others = Vector(second, third, fourth, fifth)
       runOn(first) {
@@ -258,7 +258,7 @@ abstract class SurviveNetworkInstabilitySpec
       assertCanTalk((joining ++ others): _*)
     }
 
-    "down and remove quarantined node" taggedAs LongRunningTest in within(45.seconds) {
+    "down and remove quarantined node" taggedAs LongRunningTest in within(60.seconds) {
       val others = Vector(first, third, fourth, fifth, sixth, seventh)
 
       runOn(second) {
@@ -370,7 +370,7 @@ abstract class SurviveNetworkInstabilitySpec
       }
 
       enterBarrier("after-7")
-      assertCanTalk((side1AfterJoin ++ side2): _*)
+      assertCanTalk((side1AfterJoin): _*)
     }
 
   }
