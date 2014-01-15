@@ -102,7 +102,6 @@ abstract class SurviveNetworkInstabilitySpec
   system.actorOf(Props[Echo], "echo")
 
   def assertCanTalk(alive: RoleName*): Unit = {
-    val t = System.currentTimeMillis()
     runOn(alive: _*) {
       for (to ← alive) {
         val sel = system.actorSelection(node(to) / "user" / "echo")
@@ -112,7 +111,6 @@ abstract class SurviveNetworkInstabilitySpec
         }
       }
     }
-    println(s"# talk check took: ${(System.currentTimeMillis() - t)} ms on ${myself.name}")
     enterBarrier("ping-ok")
   }
 
@@ -309,13 +307,11 @@ abstract class SurviveNetworkInstabilitySpec
     }
 
     "continue and move Joining to Up after downing of one half" taggedAs LongRunningTest in within(60.seconds) {
-      log.info("# Starting last step")
       // note that second is already removed in previous step
       val side1 = Vector(first, third, fourth)
       val side1AfterJoin = side1 :+ eighth
       val side2 = Vector(fifth, sixth, seventh)
       runOn(first) {
-        log.info("# Starting blackhole")
         for (role1 ← side1AfterJoin; role2 ← side2) {
           testConductor.blackhole(role1, role2, Direction.Both).await
         }
